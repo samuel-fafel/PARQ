@@ -1,0 +1,52 @@
+IMPLEMENTED SOLUTION:
+Summary:
+My solution maintains and updates a Map containing the current list of times in which one or more trains are arriving.
+The key of the Map is an integer representing the timeslot in minutes from midnight.
+The value of the Map is a count of how many trains are arriving at that time.
+Finding the next simultaneous arrival time only requires finding a time greater than the submitted time value in which train count >= 2.
+
+Reasoning:
+As I began to implement this system, I predicted that alternative solutions (explored below) required too much computation time for each new GET request,
+especially for large datasets (multiple trains and long schedules). To combat this, I decided to place the bulk of the work inside the database as new data
+is 'set'. By updating the 'trains_arriving_per_timeslot' Map with the train count via the 'set' method, I prevented recounting all of the trains every time
+we look for simultaneous arrivals. (As this is a train station, adding new lines is likely going to happen much less frequently than requesting times.)
+
+In general, doing any task (such as counting, comparing, etc) within the GET request itself is undisireable. My approach aimed to store and access the data as efficiently as possible.
+
+Details of Approach:
+1. POST Schedule for new train line:
+● Endpoint: '/schedule-new-line'
+● Parameters:
+    ○ 'line_name' (string): Up to 4 alphanumeric characters
+    ○ 'arrival_times' (array of strings): Time format 'HH:MM A/PM'
+● Actions:
+    ○ Validate the 'line_name' and 'arrival_times' inputs
+    ○ Store the schedule in the key-value store
+    ○ Update the 'trains_arriving_per_timeslot' Map
+● Response: 200 on success (valid request), 400 on failure (invalid request)
+
+2. GET Next Simultaneous Arrivals:
+● Endpoint: '/schedule-new-line'
+● Parameters:
+    ○ 'current_time' (query parameter): Time format 'HH:MM A/PM'
+● Actions:
+    ○ Validate the 'current_time' input
+    ○ Retrieve schedules from the key-value store
+    ○ Convert times to minutes from midnight
+    ○ Use the 'trains_arriving_per_timeslot' Map to find the next time when multiple trains arrive simultaneously
+● Response: 200 with the next simultaneous arrival time, 400 on invalid input, 404 if no simultaneous arrivals are found
+
+Service State:
+● The key-value store is implemented with 'set', 'fetch', 'keys', and 'map' methods.
+● The 'trains_arriving_per_timeslot' Map is maintained and updated with each POST request to track the number of trains arriving at each minute.
+
+
+ALTERNATIVE SOLUTIONS:
+● Nested 'for' loops in 'findNextSimultaneousArrival()'
+    ○ For each train, for each timeslot in that train's schedule, compare to all other trains (worst brute force approach)
+
+● Compare time strings rather than convert to minutes:
+    ○ Although the conversion to minutes takes time, comparing strings takes much longer, especially if I'm trying to determine order of events.
+
+● Use simple arrays instead of Maps:
+    ○ Combine all of the trains' timeslots into one array, then count the number of occurances for each time if time > submitted time value. (Messy, too much iterating)
